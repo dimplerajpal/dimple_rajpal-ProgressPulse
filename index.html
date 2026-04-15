@@ -793,10 +793,12 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);-webkit
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       <span class="nav-tip">Photos</span>
     </button>
+    <!--
     <button class="nav-btn" data-page="analysis" onclick="navigate('analysis')" title="">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       <span class="nav-tip">AI Analysis</span>
     </button>
+    -->
     <button class="nav-btn" data-page="timelapse" onclick="navigate('timelapse')" title="">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       <span class="nav-tip">Timelapse</span>
@@ -1313,7 +1315,7 @@ function renderPage(){
   switch(currentPage){
     case"dashboard":main.innerHTML=renderDashboard();break;
     case"photos":main.innerHTML=renderPhotos();break;
-    case"analysis":main.innerHTML=renderAnalysis();break;
+    // case"analysis":main.innerHTML=renderAnalysis();break;
     case"timelapse":main.innerHTML=renderTimelapse();break;
     case"stats":main.innerHTML=renderStats();break;
     case"widget":main.innerHTML=renderWidget();break;
