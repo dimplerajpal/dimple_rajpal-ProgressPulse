@@ -91,7 +91,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);-webkit
 ::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:2px}
  
 /* ── APP SHELL ── */
-.app-shell{display:flex;height:100vh;max-width:1440px;margin:0 auto}
+.app-shell{display:flex;height:100vh;max-width:1440px;margin:0 auto;position:relative;min-width:0}
  
 /* ── SIDEBAR ── */
 .sidebar{
@@ -157,6 +157,33 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);-webkit
  
 .sidebar-bottom{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:10px}
  
+.sidebar-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.42);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity var(--trans);
+  z-index:100;
+}
+.sidebar-toggle{
+  position:fixed;
+  top:16px;
+  left:16px;
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:120;
+  cursor:pointer;
+}
+.sidebar-toggle:hover{background:var(--surface2)}
+
 .theme-btn{
   width:38px;height:38px;
   border-radius:10px;
@@ -168,6 +195,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);-webkit
   display:flex;align-items:center;justify-content:center;
   transition:all var(--trans);
 }
+.theme-btn .btn-label{display:none;}
 .theme-btn:hover{background:var(--surface2);color:var(--text)}
  
 /* ── MAIN CONTENT ── */
@@ -705,13 +733,45 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);-webkit
 }
  
 /* ── RESPONSIVE ── */
+@media(max-width:1000px){
+  .app-shell{max-width:100%;}
+  .main{padding:24px 18px;}
+}
 @media(max-width:680px){
-  .sidebar{width:52px;padding:14px 0}
-  .nav-btn{width:38px;height:38px;font-size:15px}
-  .main{padding:18px 14px}
+  .sidebar{
+    position:fixed;
+    top:0;
+    left:0;
+    bottom:0;
+    width:260px;
+    max-width:calc(100vw - 40px);
+    transform:translateX(-110%);
+    transition:transform var(--trans);
+    box-shadow:0 24px 60px rgba(0,0,0,0.25);
+    align-items:flex-start;
+    padding:24px 16px;
+    z-index:110;
+  }
+  .sidebar-open .sidebar{transform:translateX(0);}
+  .sidebar-open .sidebar-backdrop{opacity:1;pointer-events:auto;}
+  .sidebar-toggle{display:flex;}
+  .main{padding:18px 16px;}
+  .nav-btn{width:100%;min-height:52px;font-size:16px;justify-content:flex-start;padding:0 14px;border-radius:14px;}
+  .nav-btn svg{margin-right:12px;}
+  .nav-tip{position:static;opacity:1;pointer-events:auto;left:auto;top:auto;background:transparent;border:none;color:var(--text);padding:0;margin:0;white-space:normal;}
+  .sidebar-bottom{align-items:flex-start;width:100%;gap:10px;}
+  .sidebar-bottom .theme-btn{width:100%;justify-content:flex-start;padding:0 14px;min-height:48px;border-radius:14px;color:var(--text);border-color:var(--border);background:var(--surface);}
+  .sidebar-bottom .theme-btn:hover{background:var(--surface2);}
+  .sidebar-bottom .btn-icon{margin-right:10px;}
+  .sidebar-bottom .btn-label{display:inline-block;font-size:14px;color:var(--text);}
+}
+@media(max-width:560px){
+  .sidebar{width:220px;}
+  .nav-btn{min-height:48px;padding:0 12px;}
+  .main{padding:16px 12px;}
+  .page-title{font-size:22px}
   .habit-grid{grid-template-columns:1fr}
   .stats-row{grid-template-columns:repeat(2,1fr)}
-  .page-title{font-size:22px}
   .before-after{grid-template-columns:1fr}
   .widget-box{width:130px;height:130px}
 }
@@ -719,6 +779,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);-webkit
 </head>
 <body>
  
+<div class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Open menu">☰</div>
+<div class="sidebar-backdrop" onclick="closeSidebar()"></div>
 <div class="app-shell">
   <!-- SIDEBAR -->
   <nav class="sidebar" id="sidebar">
@@ -750,8 +812,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);-webkit
     </button>
     -->
     <div class="sidebar-bottom">
-      <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle theme">☀</button>
-      <button class="theme-btn" onclick="logout()" title="Log out">⎋</button>
+      <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle theme"><span class="btn-icon">☀</span><span class="btn-label">Theme</span></button>
+      <button class="theme-btn" onclick="logout()" title="Log out"><span class="btn-icon">⎋</span><span class="btn-label">Logout</span></button>
     </div>
   </nav>
  
@@ -885,7 +947,14 @@ function navigate(page){
   document.querySelectorAll(".nav-btn").forEach(b=>{
     b.classList.toggle("active",b.dataset.page===page);
   });
+  if(window.innerWidth<=900){closeSidebar();}
   renderPage();
+}
+function toggleSidebar(){
+  document.documentElement.classList.toggle("sidebar-open");
+}
+function closeSidebar(){
+  document.documentElement.classList.remove("sidebar-open");
 }
  
 // ─── RING SVG ─────────────────────────────────────────────────────────────────
