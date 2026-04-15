@@ -751,6 +751,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);-webkit
     -->
     <div class="sidebar-bottom">
       <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle theme">☀</button>
+      <button class="theme-btn" onclick="logout()" title="Log out">⎋</button>
     </div>
   </nav>
  
@@ -774,12 +775,59 @@ const monthDates=ym=>{const n=daysInMonth(ym);return Array.from({length:n},(_,i)
 const HABIT_COLORS=["#e879f9","#38bdf8","#fb923c","#a78bfa","#34d399","#f472b6","#60a5fa","#fbbf24","#4ade80","#e11d48"];
 const HABIT_EMOJIS=["💊","🏃","💧","🧘","📖","🥗","🌙","🧴","💪","🎯","🧠","❤️","🦷","🌿","🍎","🏋️","✍️","🛌","☀️","🎨"];
  
+function loadAppStore(){
+  try{
+    const s=localStorage.getItem("pp_v2");
+    if(!s) return {auth:{currentUser:null,users:{}}};
+    const data=JSON.parse(s);
+    if(data && data.auth && typeof data.auth==="object") return data;
+    if(data && (Array.isArray(data.habits) || data.logs || data.photos || data.analyses || data.timelapses)){
+      const migrated={auth:{currentUser:"default",users:{default:{password:"",state:data}}}};
+      localStorage.setItem("pp_v2",JSON.stringify(migrated));
+      return migrated;
+    }
+    return {auth:{currentUser:null,users:{}}};
+  }catch{return {auth:{currentUser:null,users:{}}};}
+}
+function saveAppStore(store){
+  try{localStorage.setItem("pp_v2",JSON.stringify(store))}catch{}
+}
 function loadState(){
-  try{const s=localStorage.getItem("pp_v2");return s?JSON.parse(s):null}catch{return null}
+  const store=loadAppStore();
+  if(store.auth.currentUser && store.auth.users[store.auth.currentUser]){
+    return store.auth.users[store.auth.currentUser].state;
+  }
+  return null;
 }
 function saveState(s){
-  try{localStorage.setItem("pp_v2",JSON.stringify(s))}catch{}
+  if(!currentUser) return;
+  const store=loadAppStore();
+  if(!store.auth.users[currentUser]) store.auth.users[currentUser]={password:"",state:s};
+  else store.auth.users[currentUser].state=s;
+  saveAppStore(store);
 }
+function setCurrentUser(username){
+  const store=loadAppStore();
+  if(!store.auth.users[username]){
+    store.auth.users[username]={password:"",state:{habits:[],logs:[],photos:[],analyses:[],timelapses:[]}};
+  }
+  store.auth.currentUser=username;
+  saveAppStore(store);
+}
+function logout(){
+  const store=loadAppStore();
+  store.auth.currentUser=null;
+  saveAppStore(store);
+  currentUser=null;
+  S={habits:[],logs:[],photos:[],analyses:[],timelapses:[]};
+  currentPage="login";
+  renderPage();
+}
+ 
+let currentUser=loadAppStore().auth.currentUser;
+let S=loadState()||{habits:[],logs:[],photos:[],analyses:[],timelapses:[]};
+let currentPage=currentUser?"dashboard":"login";
+let _authMode="login";
  
 const DEMO_HABITS=[
   {id:"h1",name:"Apply Tretinoin",description:"Nightly skincare routine",icon:"🧴",color:"#e879f9",photo_enabled:true,created_at:new Date().toISOString()},
@@ -800,9 +848,6 @@ function seedLogs(habits){
   });
   return logs;
 }
- 
-let S=loadState()||{habits:DEMO_HABITS,logs:seedLogs(DEMO_HABITS),photos:[],analyses:[],timelapses:[]};
-let currentPage="dashboard";
  
 function dispatch(action){
   switch(action.type){
@@ -831,6 +876,11 @@ function showToast(msg,type="ok"){
  
 // ─── NAVIGATION ───────────────────────────────────────────────────────────────
 function navigate(page){
+  if(!currentUser){
+    currentPage="login";
+    renderPage();
+    return;
+  }
   currentPage=page;
   document.querySelectorAll(".nav-btn").forEach(b=>{
     b.classList.toggle("active",b.dataset.page===page);
@@ -1123,9 +1173,74 @@ function toggleTheme(){
   document.getElementById("themeBtn").textContent=isDark?"🌙":"☀";
 }
  
+// ─── AUTH UI ────────────────────────────────────────────────────────────────
+function setAuthMode(mode){
+  _authMode=mode;
+  renderPage();
+}
+function submitAuth(){
+  const username=document.getElementById("authUsername")?.value.trim();
+  const password=document.getElementById("authPassword")?.value;
+  if(!username||!password){showToast("Enter both username and password","err");return}
+  const store=loadAppStore();
+  if(_authMode==="signup"){const confirm=document.getElementById("authPasswordConfirm")?.value;
+    if(password!==confirm){showToast("Passwords do not match","err");return}
+    if(store.auth.users[username]){showToast("Username already taken","err");return}
+    store.auth.users[username]={password,state:{habits:[],logs:[],photos:[],analyses:[],timelapses:[]}};
+    store.auth.currentUser=username;
+    saveAppStore(store);
+    currentUser=username;
+    S=store.auth.users[username].state;
+    currentPage="dashboard";
+    showToast("Account created — welcome!","ok");
+    renderPage();
+    return;
+  }
+  const user=store.auth.users[username];
+  if(!user||user.password!==password){showToast("Invalid username or password","err");return}
+  store.auth.currentUser=username;
+  saveAppStore(store);
+  currentUser=username;
+  S=user.state;
+  currentPage="dashboard";
+  showToast("Logged in successfully","ok");
+  renderPage();
+}
+function renderAuth(){
+  const store=loadAppStore();
+  const hasUsers=Object.keys(store.auth.users).length>0;
+  return `<div style="display:flex;justify-content:center;align-items:center;min-height:75vh;padding:32px">
+    <div class="card" style="max-width:470px;width:100%;padding:28px 24px">
+      <div style="margin-bottom:22px">
+        <div class="page-title" style="font-size:28px;margin-bottom:6px">ProgressPulse Login</div>
+        <div class="page-sub">Create an account or sign in to save your habits securely.</div>
+      </div>
+      <div class="tab-bar" style="margin-bottom:18px">
+        <button class="tab-btn${_authMode===`login`?` active`:``}" onclick="setAuthMode('login')">Login</button>
+        <button class="tab-btn${_authMode===`signup`?` active`:``}" onclick="setAuthMode('signup')">Sign Up</button>
+      </div>
+      <div class="form-group"><label class="form-label">Username</label>
+        <input class="form-input" id="authUsername" autocomplete="username" /></div>
+      <div class="form-group"><label class="form-label">Password</label>
+        <input class="form-input" id="authPassword" type="password" autocomplete="${_authMode===`login`?`current-password`:`new-password`}" /></div>
+      ${_authMode===`signup`?`<div class="form-group"><label class="form-label">Confirm Password</label>
+        <input class="form-input" id="authPasswordConfirm" type="password" autocomplete="new-password" /></div>`:""}
+      <div class="btn-row" style="margin-top:16px;justify-content:flex-end">
+        <button class="btn btn-primary" onclick="submitAuth()">${_authMode===`login`?`Login`:`Create Account`}</button>
+      </div>
+      ${hasUsers?`<div style="margin-top:14px;font-size:12px;color:var(--text-muted)">${_authMode===`login`?`Need an account? Switch to Sign Up.`:`Already have an account? Switch to Login.`}</div>`:""}
+    </div>
+  </div>`;
+}
+
 // ─── RENDER PAGE ──────────────────────────────────────────────────────────────
 function renderPage(){
   const main=document.getElementById("mainContent");
+  if(!currentUser){
+    currentPage="login";
+    main.innerHTML=renderAuth();
+    return;
+  }
   switch(currentPage){
     case"dashboard":main.innerHTML=renderDashboard();break;
     case"photos":main.innerHTML=renderPhotos();break;
@@ -1133,6 +1248,7 @@ function renderPage(){
     case"timelapse":main.innerHTML=renderTimelapse();break;
     case"stats":main.innerHTML=renderStats();break;
     case"widget":main.innerHTML=renderWidget();break;
+    default:main.innerHTML=renderDashboard();break;
   }
 }
  
